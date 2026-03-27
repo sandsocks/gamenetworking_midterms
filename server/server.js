@@ -2,43 +2,58 @@ const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 
-const{
+dotenv.config();
+
+const {
     createPlayer,
     login,
-    updateScore
+    updateScore,
+    getAllPlayers,
+    getPlayerById,
+    deletePlayer
 } = require('./controllers/playerController');
 
-dotenv.config();
+const { protect } = require('./middleware/auth');
 
 const app = express();
 
 app.use(express.json());
 
+// Remove global error handler temporarily
+/*
+app.use((err, req, res, next) => {
+    console.error('--- GLOBAL ERROR ---');
+    console.error(err);
+    res.status(500).json({
+        success: false,
+        message: 'Internal Server Error',
+        error: err.message
+    });
+});
+*/
+
 mongoose.connect(process.env.MONGODB_URI)
-    .then(()=> console.log('Connected to MongoDB'))
-    .catch((err)=> console.error('Failed to Connect to MongoDB:', err));
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('Failed to Connect to MongoDB:', err));
 
 const PORT = process.env.PORT || 3000;
 
-app.get('/players/:id', (req, res)=>{
-    res.json({message: `GET PLAYERS: Getting [Player with Id ${req.params.id}]`});
-});
-
-app.put('/', (req, res)=>{
-    res.json({message: 'Welcome to (game name)'});
-});
-
-app.put('/players/:id', updateScore)
-
+// Public routes
 app.post('/players/register', createPlayer);
-
 app.post('/players/login', login);
 
-app.delete('/', (req, res)=>{
-    res.json({message: 'Welcome to (game name)'});
+// Welcome route
+app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to the Game API' });
 });
 
-app.listen(PORT, ()=>{
+// Protected routes
+app.get('/players', protect, getAllPlayers);
+app.get('/players/:id', protect, getPlayerById);
+app.put('/players/:id', protect, updateScore);
+app.delete('/players/:id', protect, deletePlayer);
+
+app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
 

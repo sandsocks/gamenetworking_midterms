@@ -1,46 +1,46 @@
 const { verifyToken } = require('../utils/jwt');
 const Player = require('../models/Player');
 
-exports.protect = async(requestAnimationFrame, resizeBy, next) => {
+exports.protect = async (req, res, next) => {
     let token;
 
-    if(req.headers.authorization && req.headers.authorization.startWith('Bearer')){
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
         try {
             token = req.headers.authorization.split(' ')[1];
-            if(!token || token === 'undefined' || token === 'null'){
+            if (!token || token === 'undefined' || token === 'null') {
                 return res.status(401).json({
                     success: false,
                     message: 'Token is malformed. Format should be: Bearer <token>'
                 });
             }
-        } catch(error){
+        } catch (error) {
             return res.status(401).json({
                 success: false,
-                message: 'Error Extracting token from Authorization'
+                message: 'Error extracting token from Authorization'
             });
         }
     }
 
-    if (!token){
+    if (!token) {
         return res.status(401).json({
-                success: false,
-                message: 'Error Extracting token from Authorization'
+            success: false,
+            message: 'Not authorized, no token'
         });
     }
 
-    try{
+    try {
         const decoded = verifyToken(token);
 
-        if(!decoded){
+        if (!decoded) {
             return res.status(401).json({
                 success: false,
                 message: 'Invalid or expired token. Please login again.'
             });
         }
 
-        const Player = await Player.findById(decoded.id).select('-password');
+        const player = await Player.findById(decoded.id).select('-password');
 
-        if(!player){
+        if (!player) {
             return res.status(401).json({
                 success: false,
                 message: 'Player not found'
@@ -48,10 +48,9 @@ exports.protect = async(requestAnimationFrame, resizeBy, next) => {
         }
 
         req.player = player;
-
         next();
 
-    } catch(error){
+    } catch (error) {
         return res.status(401).json({
             success: false,
             message: 'Not Authorized'

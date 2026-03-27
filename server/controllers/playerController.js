@@ -1,66 +1,62 @@
 const Player = require('../models/Player');
+const { generateToken } = require('../utils/jwt');
 
-exports.createPlayer = async (req, res) => {
-    try{
-        const player = await Player.create(req.body);
+const bcrypt = require('bcryptjs');
+
+exports.createPlayer = async (req, res, next) => {
+    try {
+        const { username, email, password } = req.body;
+        
+        const player = await Player.create({
+            username,
+            email,
+            password
+        });
 
         res.status(201).json({
             success: true,
-            message: 'Player created successfully',
             data: player
         })
-    } catch (error){
-        if(error.name ==='ValidationError'){
-            const messages = Object.values(error.errors).map(err => err.message)
-            return res.status(400).json({
-                success: false,
-                message: 'Validation Error',
-                data: messages
-            });
-        }
-
-        if (error.code === 11000){
-            const field =Object.keys(error.keyPattern)[0];
-
-            return res.status(400).json({
-                success: false,
-                message: `${field} already exists`,
-            })
-        }
-
-        res.status(500).json({
-            success: false,
-            message: `Server Error`,
-            error: error.message
-        })
+    } catch (error) {
+        console.error('MINIMAL REG ERROR:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 }
 
 exports.login = async (req, res) => {
-    try{
-        const {username, password} = req.body;
-        if(!username || !password){
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
             return res.status(400).json({
                 success: false,
-                message: "Please provide a valid username or password"
+                message: "Please provide a valid username and password"
             });
         }
 
-        const player = await Player.findOne({username});
-        if(!player || player.password !== password){
-            return res.status(400).json({
+        const player = await Player.findOne({ username });
+        if (!player || !(await player.comparePassword(password))) {
+            return res.status(401).json({
                 success: false,
                 message: "Invalid username or password"
             });
         }
 
+        const token = generateToken(player._id);
+
         res.status(200).json({
             success: true,
             message: "Login successful",
-            data: player
+            token: token,
+            data: {
+                id: player._id,
+                username: player.username,
+                email: player.email,
+                kills: player.kills,
+                deaths: player.deaths
+            }
         });
     }
-    catch(error){
+    catch (error) {
         res.status(500).json({
             success: false,
             message: error.message
@@ -69,32 +65,113 @@ exports.login = async (req, res) => {
 }
 
 exports.updateScore = async (req, res) => {
-    try{
-        const {kills, deaths} = req.body;
+    try {
+        const { kills, deaths } = req.body;
         const id = req.params.id;
-        const player = await Player.findById(id);
 
-        if(!player){
+        // Ensure user can only update their own score or add auth check
+        if (req.player.id !== id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only update your own stats'
+            });
+        }
+
+        const player = await Player.findByIdAndUpdate(
+            id,
+            { $inc: { kills: kills || 0, deaths: deaths || 0 } },
+            { new: true, runValidators: true }
+        );
+
+        if (!player) {
             return res.status(404).json({
                 success: false,
                 message: 'Player not found'
             });
         }
 
-        player.deaths = player.deaths + deaths;
-        player.kills = player.kills + kills;
-
-        await player.save();
-
         res.status(200).json({
             success: true,
             data: player
         });
     }
-    catch(error){
+    catch (error) {
         res.status(500).json({
             success: false,
             message: 'Failed to update Player K/D',
+            error: error.message
+        });
+    }
+}
+
+exports.getAllPlayers = async (req, res) => {
+    try {
+        const players = await Player.find().select('-password');
+        res.status(200).json({
+            success: true,
+            count: players.length,
+            data: players
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get players',
+            error: error.message
+        });
+    }
+}
+
+exports.getPlayerById = async (req, res) => {
+    try {
+        const player = await Player.findById(req.params.id).select('-password');
+        if (!player) {
+            return res.status(404).json({
+                success: false,
+                message: 'Player not found'
+            });
+        }
+        res.status(200).json({
+            success: true,
+            data: player
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server Error',
+            error: error.message
+        });
+    }
+}
+
+exports.deletePlayer = async (req, res) => {
+    try {
+        const id = req.params.id;
+
+        // Only allow deleting own account
+        if (req.player.id !== id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You can only delete your own account'
+            });
+        }
+
+        const player = await Player.findByIdAndDelete(id);
+
+        if (!player) {
+            return res.status(404).json({
+                success: false,
+                message: 'Player not found'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Player deleted successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete player',
             error: error.message
         });
     }
