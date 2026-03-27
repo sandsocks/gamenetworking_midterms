@@ -18,7 +18,6 @@ public class Slipper : Item
             rb.AddForce(holder.transform.forward * ThrowForce, ForceMode.Impulse);
         }
         
-        // Slipper is usually a one-time throw until picked up or destroyed
         RemainingUses = 0;
     }
 
@@ -29,14 +28,12 @@ public class Slipper : Item
         if (collision.collider.TryGetComponent<PlayerController>(out var otherPlayer))
         {
             otherPlayer.ApplyStun(2.0f);
-            // Throw back effect
             if (collision.collider.TryGetComponent<NetworkCharacterController>(out var ncc))
             {
                 ncc.Move(transform.forward * 5f);
             }
         }
         
-        // Destroy or reset slipper
         Runner.Despawn(Object);
     }
 }

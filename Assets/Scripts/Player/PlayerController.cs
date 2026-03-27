@@ -105,7 +105,6 @@ public class PlayerController : NetworkBehaviour
     {
         if (GrabbedObjectId.IsValid || GrabbedPlayerId.IsValid)
         {
-            // Drop it
             GrabbedObjectId = default;
             GrabbedPlayerId = default;
             return;
@@ -155,8 +154,7 @@ public class PlayerController : NetworkBehaviour
                 HasHelmet = false;
                 Debug.Log("Helmet Broke!");
             }
-            if (!canStun) return; // Helmet prevents some stuns but if it's forced...
-            // User said helmet prevents stuns
+            if (!canStun) return;
             return; 
         }
 

@@ -68,8 +68,6 @@ exports.updateScore = async (req, res) => {
     try {
         const { kills, deaths } = req.body;
         const id = req.params.id;
-
-        // Ensure user can only update their own score or add auth check
         if (req.player.id !== id) {
             return res.status(403).json({
                 success: false,
@@ -146,8 +144,6 @@ exports.getPlayerById = async (req, res) => {
 exports.deletePlayer = async (req, res) => {
     try {
         const id = req.params.id;
-
-        // Only allow deleting own account
         if (req.player.id !== id) {
             return res.status(403).json({
                 success: false,
