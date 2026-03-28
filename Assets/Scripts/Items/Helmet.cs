@@ -9,7 +9,6 @@ public class Helmet : Item
     {
         holder.HasHelmet = true;
         holder.HelmetHP = HP;
-        // The item is consumed when put on
         RemainingUses = 0;
     }
 }
